@@ -13,28 +13,27 @@ async function allDelete() {
         // deleteData(conn);
         const startTime = Date.now(); // 開始時間
 
-        const maxCount = 10;
-        const batSize = 200;
-    
         const promises = [];
-    
+
         conn.bulk.pollInterval = 5000; // 5 sec
-        conn.bulk.pollTimeout = 20000; // 60 sec
-    
+        // conn.bulk.pollTimeout = 60000; // 60 sec
+        conn.bulk.pollTimeout = Number.MAX_SAFE_INTEGER; // 9007199254740991
+
         promises.push(
             conn
                 .sobject('Account')
                 .find({
                     CreatedDate: { $eq: jsforce.Date.TODAY },
                 })
-                .limit(20000)
+                // .limit(20000)
+                .run({ autoFetch: true, maxFetch: 20000 })
                 .destroy({
                     useBulk: true,
                 })
         );
-    
+
         const executeResults = await Promise.all(promises);
-    
+
         executeResults.forEach((results) => {
             results.forEach((res) => {
                 if (!res.success) {
@@ -42,7 +41,7 @@ async function allDelete() {
                 }
             });
         });
-    
+
         const endTime = Date.now(); // 終了時間
         console.log(`${(endTime - startTime) / 1000}秒 で完了`);
     } catch (err) {

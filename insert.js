@@ -18,7 +18,7 @@ async function manyCreate() {
 async function createData(conn) {
     const startTime = Date.now(); // 開始時間
 
-    const maxCount = 100;
+    const maxCount = 1000;
     const batSize = 200;
 
     const promises = [];
