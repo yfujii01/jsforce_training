@@ -8,11 +8,11 @@ async function manyDelete() {
         const promises = [];
         conn.bulk.pollTimeout = Number.MAX_SAFE_INTEGER; // 9007199254740991
 
-        const limit = 210000;
+        // const limit = 210000;
 
-        let queryResult = await conn.query(
-            `SELECT Id FROM Account WHERE CreatedDate = Today LIMIT ${limit}`
-        );
+        const soql = `SELECT Id FROM Account WHERE CreatedDate = Today`;
+        // const soql = `SELECT Id FROM Account WHERE CreatedDate = Today LIMIT ${limit}`;
+        let queryResult = await conn.query(soql);
         console.log(`Total-Size : ${queryResult.totalSize}`);
 
         if (queryResult.totalSize > 0) {
@@ -35,7 +35,7 @@ async function manyDelete() {
         return { result: 'success' };
     } catch (err) {
         console.log(err);
-        return err;
+        throw err;
     }
 }
 
