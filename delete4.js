@@ -38,7 +38,7 @@ async function manyDelete() {
     let queryResult = await conn.query(soql);
     console.log(`Total-Size : ${queryResult.totalSize.toLocaleString()}`);
     let totalCount = 0;
-    const PARALELL_SIZE = 5; // 並列処理数(5=1万、20=4万、50=10万)
+    const PARALELL_SIZE = 50; // 並列処理数(5=1万、20=4万、50=10万)
     // query 1回の取得件数は2000件のため、1万件並列で処理
 
     if (queryResult.totalSize > 0) {
