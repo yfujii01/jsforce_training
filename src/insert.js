@@ -35,7 +35,6 @@ function generateFakeAccount() {
 
 /**
  * 実行完了待ち
- * 1万件の登録で3～5秒
  *
  * @param {*} promises
  */
@@ -77,10 +76,9 @@ async function manyCreate(insertCount) {
     // 登録したい数をコミット数で割った数だけループさせる
     const loopMaxCount = Math.ceil(insertCount / BAT_SIZE);
     for (let count = 0; count < loopMaxCount; count++) {
-
         // 同時登録件数の設定(MAXはBAT_SIZE)
-        let childLoopMax = BAT_SIZE
-        if(insertCount < totalCount + BAT_SIZE){
+        let childLoopMax = BAT_SIZE;
+        if (insertCount < totalCount + BAT_SIZE) {
             childLoopMax = insertCount - totalCount;
         }
 
@@ -113,8 +111,8 @@ async function manyCreate(insertCount) {
 }
 
 const startTime = Date.now(); // 処理時間計測1(start)
-const insertCount = 5*1000 * 1000; // 作成件数(100万件 = 1000 * 1000)
-// 100万件で約8分
+const insertCount = 1000 * 1000; // 作成件数(100万件 = 1000 * 1000)
+// 100万件で約10分
 manyCreate(insertCount)
     .then(() => {
         const processTime = (Date.now() - startTime) / 1000; // 処理時間計測1(end)

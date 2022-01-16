@@ -3,7 +3,6 @@ const sleep = (msec) => new Promise((resolve) => setTimeout(resolve, msec));
 
 /**
  * 実行完了待ち
- * 1万件の登録で3～5秒
  *
  * @param {*} promises
  */
@@ -34,12 +33,12 @@ async function manyDelete() {
     conn.bulk.pollTimeout = Number.MAX_SAFE_INTEGER; // bulk待ち時間
 
     // const soql = `SELECT Id FROM Account WHERE CreatedDate = Today LIMIT 10000`;
-    const soql = `SELECT Id FROM Account WHERE CreatedDate = Today LIMIT 150000`;
+    const soql = `SELECT Id FROM Account WHERE CreatedDate = Today`;
     let queryResult = await conn.query(soql);
     console.log(`Total-Size : ${queryResult.totalSize.toLocaleString()}`);
     let totalCount = 0;
-    const PARALELL_SIZE = 50; // 並列処理数(5=1万、20=4万、50=10万)
-    // query 1回の取得件数は2000件のため、1万件並列で処理
+    const PARALELL_SIZE = 25; // 並列処理数
+    // query 1回の取得件数は2000件のため、2000 * 25並列 = 5万件
 
     if (queryResult.totalSize > 0) {
         let time1 = Date.now();
