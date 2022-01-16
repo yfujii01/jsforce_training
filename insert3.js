@@ -1,33 +1,67 @@
 const jsforce = require('jsforce');
-const sleep = msec => new Promise(resolve => setTimeout(resolve, msec));
+const faker = require('@faker-js/faker');
+const sleep = (msec) => new Promise((resolve) => setTimeout(resolve, msec));
 
+/**
+ * 取引先ダミーデータ(JSON)生成
+ */ 
+function generateFakeAccount() {
+    return {
+        Name: faker.company.companyName(),
+        Phone: faker.phone.phoneNumberFormat(),
+        Fax: faker.phone.phoneNumberFormat(),
+        BillingCountry: faker.address.country(),
+        BillingPostalCode: faker.address.zipCode(),
+        BillingState: faker.address.state(),
+        BillingCity: faker.address.city(),
+        BillingStreet: faker.address.streetName(),
+        BillingLatitude: faker.address.latitude(),
+        BillingLongitude: faker.address.longitude(),
+        ShippingCountry: faker.address.country(),
+        ShippingPostalCode: faker.address.zipCode(),
+        ShippingState: faker.address.state(),
+        ShippingCity: faker.address.city(),
+        ShippingStreet: faker.address.streetName(),
+        ShippingLatitude: faker.address.latitude(),
+        ShippingLongitude: faker.address.longitude(),
+        Website: faker.internet.url(),
+        AnnualRevenue: faker.datatype.number({
+            min: 10 * 1000 * 1000,
+            max: 10 * 1000 * 1000 * 1000,
+        }),
+        NumberOfEmployees: faker.datatype.number({
+            min: 10,
+            max: 100 * 1000,
+        }),
+    };
+}
+
+/**
+ * 取引先大量作成
+ *
+ * @param 作成件数
+ */
 async function manyCreate(insertCount) {
     try {
         const conn = new jsforce.Connection();
         await conn.login(process.env.SF_USER, process.env.SF_PASS);
 
-        const BAT_SIZE = 200;
+        const BAT_SIZE = 200; // 同時コミット数
         const loopCount = Math.ceil(insertCount / BAT_SIZE);
-        // conn.bulk.pollTimeout = Number.MAX_SAFE_INTEGER; // 9007199254740991
 
         let promises = [];
         let totalCount = 0;
-        const paralellNum = 50; // 50=1万件単位、100=2万件単位
+        const paralellNum = 50; // 並列数
         for (let count = 0; count < loopCount; count++) {
             const objs = [];
             for (let i = count * BAT_SIZE; i < (count + 1) * BAT_SIZE; i++) {
                 if (i >= insertCount) {
                     break;
                 }
-                objs.push({
-                    Name: 'AccountsHOGE #' + ('' + i).padStart(7, '0'),
-                });
+                objs.push(generateFakeAccount());
                 totalCount++;
             }
-            const time1 = Date.now();
-
-            // console.log('登録処理:' + count);
-            // await conn.sobject('Account').create(objs, { allOrNone: true });
+            const time1 = Date.now(); // 処理時間計測2(start)
 
             promises.push(
                 conn.sobject('Account').create(objs, { allOrNone: true })
@@ -35,35 +69,27 @@ async function manyCreate(insertCount) {
 
             if (promises.length % paralellNum == 0) {
                 await Promise.all(promises);
-                // const time2 = Date.now();
 
-                await sleep(100)
-                const processTime = (Date.now() - time1) / 1000;
+                /*
+                 * API連続呼び出し負荷軽減用
+                 * 短時間に連続して呼び出すとネットワークエラーが発生する
+                 */
+                await sleep(100);
+
+                const processTime = (Date.now() - time1) / 1000; // 処理時間計測2(end)
                 console.log(
                     `${totalCount.toLocaleString()}件 登録完了 ${processTime}秒`
                 );
-
-                // 配列クリア
                 promises = [];
-
-                // console.log('sleep start')
-                // console.log('sleep end')
-
             }
         }
 
-        console.log('promises = ' + promises.length);
         const executeResults = await Promise.all(promises);
-
-        console.log('suc');
         executeResults.forEach((results) => {
             results.forEach((res) => {
                 if (!res.success) {
-                    console.log('res.success = false');
-                    // console.log(res.errors);
                     throw res;
                 }
-                // console.log(res)
             });
         });
 
@@ -74,19 +100,16 @@ async function manyCreate(insertCount) {
     }
 }
 
-const startTime = Date.now(); // 開始時間
-const insertCount = 1000 * 1000; // 100万(全並列だとエラー)
-// const insertCount = 20 * 1000;
+const startTime = Date.now(); // 処理時間計測1(start)
+const insertCount = 1 * 1000;
 manyCreate(insertCount)
     .then(() => {
-        const endTime = Date.now(); // 終了時間
+        const processTime = (Date.now() - startTime) / 1000; // 処理時間計測1(end)
         console.log(
-            `${
-                (endTime - startTime) / 1000
-            }秒 で ${insertCount.toLocaleString()} 件 insert`
+            `${processTime}秒 で ${insertCount.toLocaleString()} 件 insert`
         );
     })
     .catch((err) => {
         console.log('error');
-        // console.log(err);
+        console.log(err);
     });
