@@ -1,39 +1,5 @@
 const jsforce = require('jsforce');
-
-/**
- * 与えられたイテラブルから得られる関数を順に、
- * 指定された数まで並列に実行する。
- *
- * @param iterable {Iterable<() => Promise<void>}
- *  実行したい関数を要素に持つイテラブル。
- *  各関数は引数を持たず、Promise を返す。
- * @param concurrency {number} この数まで並列に実行する。
- * @return {Promise<void>}
- *  全ての関数を実行し終えると resolve される Promise。
- */
-async function runConcurrentlyAsync(iterable, concurrency) {
-    const iterator = iterable[Symbol.iterator]();
-    let index = 0; // ログ用
-    const promises = Array.from({ length: concurrency }, (_, id) => {
-        return new Promise(async (resolve) => {
-            for (
-                let result = iterator.next();
-                !result.done;
-                result = iterator.next()
-            ) {
-                const i = index++;
-                console.log(`${id}: ${i}...`);
-
-                await result.value();
-
-                console.log(`        ...${id}: ${i}`);
-            }
-
-            resolve();
-        });
-    });
-    await Promise.all(promises);
-}
+const sleep = msec => new Promise(resolve => setTimeout(resolve, msec));
 
 async function manyCreate(insertCount) {
     try {
@@ -42,9 +8,11 @@ async function manyCreate(insertCount) {
 
         const BAT_SIZE = 200;
         const loopCount = Math.ceil(insertCount / BAT_SIZE);
+        // conn.bulk.pollTimeout = Number.MAX_SAFE_INTEGER; // 9007199254740991
 
-        const promises = [];
-
+        let promises = [];
+        let totalCount = 0;
+        const paralellNum = 50; // 50=1万件単位、100=2万件単位
         for (let count = 0; count < loopCount; count++) {
             const objs = [];
             for (let i = count * BAT_SIZE; i < (count + 1) * BAT_SIZE; i++) {
@@ -54,10 +22,34 @@ async function manyCreate(insertCount) {
                 objs.push({
                     Name: 'AccountsHOGE #' + ('' + i).padStart(7, '0'),
                 });
+                totalCount++;
             }
+            const time1 = Date.now();
+
+            // console.log('登録処理:' + count);
+            // await conn.sobject('Account').create(objs, { allOrNone: true });
+
             promises.push(
                 conn.sobject('Account').create(objs, { allOrNone: true })
             );
+
+            if (promises.length % paralellNum == 0) {
+                await Promise.all(promises);
+                // const time2 = Date.now();
+
+                await sleep(100)
+                const processTime = (Date.now() - time1) / 1000;
+                console.log(
+                    `${totalCount.toLocaleString()}件 登録完了 ${processTime}秒`
+                );
+
+                // 配列クリア
+                promises = [];
+
+                // console.log('sleep start')
+                // console.log('sleep end')
+
+            }
         }
 
         console.log('promises = ' + promises.length);
@@ -84,6 +76,7 @@ async function manyCreate(insertCount) {
 
 const startTime = Date.now(); // 開始時間
 const insertCount = 1000 * 1000; // 100万(全並列だとエラー)
+// const insertCount = 20 * 1000;
 manyCreate(insertCount)
     .then(() => {
         const endTime = Date.now(); // 終了時間
